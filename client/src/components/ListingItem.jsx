@@ -7,42 +7,39 @@ export default function ListingItem({ listing }) {
       <Link to={`/listing/${listing._id}`}>
         <img
           src={
-            listing.imageUrls[0] ||
+            listing.mediaUrls[0] ||
             'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSw2We7XUMHHnWDYCLn06OOr57Rf5Kab51MjxFQS50hSg&s=10'
           }
-          alt='listing cover'
+          alt='issue cover'
           className='h-[320px] sm:h-[220px] w-full object-cover hover:scale-105 transition-scale duration-300'
         />
         <div className='p-3 flex flex-col gap-2 w-full'>
           <p className='truncate text-lg font-semibold text-slate-700'>
-            {listing.name}
+            {listing.title}
           </p>
+
           <div className='flex items-center gap-1'>
             <MdLocationOn className='h-4 w-4 text-green-700' />
             <p className='text-sm text-gray-600 truncate w-full'>
-              {listing.address}
+              {listing.locationContext}
             </p>
           </div>
+
           <p className='text-sm text-gray-600 line-clamp-2'>
             {listing.description}
           </p>
-          <p className='text-slate-500 mt-2 font-semibold '>
-            $
-            {listing.offer
-              ? listing.discountedPrice.toLocaleString('en-US')
-              : listing.regularPrice.toLocaleString('en-US')}
-            {listing.type === 'rent' && ' / month'}
+
+          <p className='text-slate-500 mt-2 font-semibold'>
+            Severity Score: <span className={listing.primaryMetric >= 7 ? 'text-red-600' : 'text-slate-700'}>{listing.primaryMetric}/10</span>
+            {listing.statusFlagThree && <span className='text-red-600 text-xs ml-2'>(Escalated)</span>}
           </p>
-          <div className='text-slate-700 flex gap-4'>
+
+          <div className='text-slate-700 flex gap-4 mt-1'>
             <div className='font-bold text-xs'>
-              {listing.bedrooms > 1
-                ? `${listing.bedrooms} beds `
-                : `${listing.bedrooms} bed `}
+              {listing.tertiaryMetric > 1 ? `${listing.tertiaryMetric} Days` : `${listing.tertiaryMetric} Day`} Noticed
             </div>
             <div className='font-bold text-xs'>
-              {listing.bathrooms > 1
-                ? `${listing.bathrooms} baths `
-                : `${listing.bathrooms} bath `}
+              {listing.secondaryMetric > 1 ? `${listing.secondaryMetric} Students` : `${listing.secondaryMetric} Student`} Affected
             </div>
           </div>
         </div>

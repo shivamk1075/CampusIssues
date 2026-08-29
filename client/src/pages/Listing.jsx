@@ -1,19 +1,17 @@
-import {useEffect} from 'react'
-import {useParams} from 'react-router-dom'
-import {useState} from 'react'
-import {Swiper, SwiperSlide} from 'swiper/react'
-import SwiperCore from 'swiper'
-import {useSelector} from 'react-redux'
-import {Navigation} from 'swiper/modules'
-import 'swiper/css/bundle'
+import { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import SwiperCore from 'swiper';
+import { useSelector } from 'react-redux';
+import { Navigation } from 'swiper/modules';
+import 'swiper/css/bundle';
 import {
-  FaBath,
-  FaBed,
-  FaChair,
-  FaMapMarkedAlt,
   FaMapMarkerAlt,
-  FaParking,
-  FaShare,
+  FaClock,
+  FaUserFriends,
+  FaExclamationTriangle,
+  FaFire,
+  FaInfoCircle
 } from 'react-icons/fa';
 import Contact from '../components/Contact';
 
@@ -32,11 +30,14 @@ export default function Listing() {
             setLoading(true);
             const res = await fetch(`/api/listing/get/${params.listingId}`);
             const data = await res.json();
-            if(data.success === false){
-                setError(true);
-                setLoading(false);
-                return ;
+
+            if (data.success === false) {
+              setError(true);
+              setLoading(false);
+              return;
             }
+
+            // Clean direct assignment - no legacy fallbacks needed
             setListing(data);
             setLoading(false);
             setError(false);
@@ -48,77 +49,87 @@ export default function Listing() {
     }
     fetchListing();
   }, [params.listingId]);
-  // console.log(loading);
 
   return (
     <main>
       {loading && <p className='text-center my-7 text-2xl '>Loading...</p>}
-      {error && <p className='text-center my-7 text-2xl '>Something went wrong!</p>}
+      {error && <p className='text-center my-7 text-2xl '>Issue not found!</p>}
       {listing && !loading && !error && 
       <div>
       <Swiper navigation>
-        {listing.imageUrls.map((url) => (
+        {listing.mediaUrls.map((url) => (
           <SwiperSlide key={url}>
             <div className='h-[550px]' style={{background: `url(${url}) center no-repeat` ,backgroundSize: 'cover'}}></div>
-            {/* <img src={url} alt="Listing" /> */}
           </SwiperSlide>
         ))}
       </Swiper>
 
         <div className='flex flex-col max-w-4xl mx-auto p-3 my-7 gap-4'>
               <p className='text-2xl font-semibold'>
-                {listing.name} - ${' '}
-                {listing.offer
-                  ? listing.discountedPrice.toLocaleString('en-US')
-                  : listing.regularPrice.toLocaleString('en-US')}
-                {listing.type === 'rent' && ' / month'}
+                {listing.title}
               </p>
-        <p className='flex items-center mt-6 gap-2 text-slate-600  text-sm'>
-            <FaMapMarkerAlt className='text-green-700' />
-            {listing.address}
+        
+        <p className='flex items-center mt-2 gap-2 text-slate-600 text-sm'>
+          <FaMapMarkerAlt className='text-green-700' />
+          {listing.locationContext}
         </p>
-        <div className='flex gap-4'>
-            <p className='bg-red-900 w-full max-w-[200px] text-white text-center p-1 rounded-md'>
-              {listing.type === 'rent' ? 'For Rent' : 'For Sale'}
+        
+        <div className='flex gap-4 mt-2'>
+            <p className='bg-slate-800 w-full max-w-[200px] text-white text-center p-1 rounded-md'>
+              {listing.category === 'shared' ? 'Common Area' : 'Private Room'}
             </p>
-            {listing.offer && (
-              <p className='bg-green-900 w-full max-w-[200px] text-white text-center p-1 rounded-md'>
-                ${+listing.regularPrice - +listing.discountedPrice} OFF
+            {listing.statusFlagThree && (
+              <p className='bg-red-700 w-full max-w-[250px] text-white text-center p-1 rounded-md'>
+                Escalated (Priority: {listing.quaternaryMetric})
               </p>
             )}
         </div>
-          <p className='text-slate-800'>
+          <p className='text-slate-800 mt-4'>
             <span className='font-semibold text-black'>Description - </span>
             {listing.description}
           </p>
-          <ul className='text-green-900 font-semibold text-sm flex flex-wrap items-center gap-4 sm:gap-6'>
-            <li className='flex items-center gap-1 whitespace-nowrap '>
-              <FaBed className='text-lg' />
-              {listing.bedrooms > 1
-                ? `${listing.bedrooms} beds `
-                : `${listing.bedrooms} bed `}
+          <ul className='text-green-900 font-semibold text-sm flex flex-wrap items-center gap-4 sm:gap-6 mt-4'>
+            
+            <li className='flex items-center gap-1 whitespace-nowrap'>
+              <FaInfoCircle className='text-lg' />
+              Severity Score: {listing.primaryMetric}/10
             </li>
-            <li className='flex items-center gap-1 whitespace-nowrap '>
-              <FaBath className='text-lg' />
-              {listing.bathrooms > 1
-                ? `${listing.bathrooms} baths `
-                : `${listing.bathrooms} bath `}
+
+            <li className='flex items-center gap-1 whitespace-nowrap'>
+              <FaClock className='text-lg' />
+              {listing.tertiaryMetric > 1 
+                ? `${listing.tertiaryMetric} Days Noticed` 
+                : `${listing.tertiaryMetric} Day Noticed`}
             </li>
-            <li className='flex items-center gap-1 whitespace-nowrap '>
-              <FaParking className='text-lg' />
-              {listing.parking ? 'Parking spot' : 'No Parking'}
+
+            <li className='flex items-center gap-1 whitespace-nowrap'>
+              <FaUserFriends className='text-lg' />
+              {listing.secondaryMetric > 1 
+                ? `${listing.secondaryMetric} Students Affected` 
+                : `${listing.secondaryMetric} Student Affected`}
             </li>
-            <li className='flex items-center gap-1 whitespace-nowrap '>
-              <FaChair className='text-lg' />
-              {listing.furnished ? 'Furnished' : 'Unfurnished'}
-            </li>
+
+            {listing.statusFlagTwo && (
+                <li className='flex items-center gap-1 whitespace-nowrap text-red-600'>
+                <FaExclamationTriangle className='text-lg' />
+                Safety Hazard
+                </li>
+            )}
+
+            {listing.statusFlagOne && (
+                <li className='flex items-center gap-1 whitespace-nowrap text-red-600'>
+                <FaFire className='text-lg' />
+                Urgent / Emergency
+                </li>
+            )}
           </ul>
+          
           {currentUser && listing.userRef !== currentUser._id && !contact && (
               <button
                 onClick={() => setContact(true)}
-                className='bg-slate-700 text-white rounded-lg uppercase hover:opacity-95 p-3'
+                className='bg-slate-700 text-white rounded-lg uppercase hover:opacity-95 p-3 mt-6'
               >
-                Contact landlord
+                Contact Reporter
               </button>
             )}
             {contact && <Contact listing={listing} />}

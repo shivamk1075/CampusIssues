@@ -1,286 +1,257 @@
-// import { set } from 'mongoose';
-import { useEffect } from 'react';
-import { useState } from 'react'
-import {useSelector} from 'react-redux';
-import {useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useSelector } from 'react-redux';
+import { useNavigate, useParams } from 'react-router-dom';
 
 export default function UpdateListing() {
-    const {currentUser} = useSelector((state) => state.user);
+    const { currentUser } = useSelector((state) => state.user);
     const navigate = useNavigate();
     const params = useParams();
     const [files, setFiles] = useState([]);
+    
+    // Clean, domain-agnostic state mapping exactly to your new Mongoose schema
     const [formData, setFormData] = useState({
-        imageUrls: [],
-        name: '',
+        title: '',
         description: '',
-        address: '',
-        type: 'rent',
-        bedrooms: 1,
-        bathrooms: 1,
-        regularPrice: 0,
-        discountedPrice: 0,
-        offer: false,
-        parking: false,
-        furnished: false,
+        locationContext: '',
+        primaryMetric: 0,
+        quaternaryMetric: 0,
+        secondaryMetric: 1,
+        tertiaryMetric: 1,
+        statusFlagOne: false,
+        statusFlagTwo: false,
+        statusFlagThree: false,
+        category: 'individual',
+        mediaUrls: [],
     });
     
     const [imageUploadError, setImageUploadError] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState(false);
     const [loading, setLoading] = useState(false);
-    // console.log(formData);
+
     useEffect(() => {
         const fetchListing = async () => {
             const listingId = params.listingId;
             const res = await fetch(`/api/listing/get/${listingId}`);
             const data = await res.json();
-            if(data.success === false){
+
+            if (data.success === false) {
                 console.log(data.message);
-                return ;
+                return;
             }
+
+            // Since the backend is completely clean, we just set the data directly.
             setFormData(data);
         };
 
         fetchListing();
-    }, []);
+    }, [params.listingId]);
 
-    const handleImageSubmit = (e) => {
-        if( files.length > 0 && files.length  + formData.imageUrls.length < 7){
+    const handleImageSubmit = async () => {
+        if (files.length > 0 && files.length + formData.mediaUrls.length < 7) {
             setUploading(true);
             setImageUploadError(false);
-            const promises = [];
 
-            for (let i = 0; i < files.length; i++) {
-                promises.push(storeImage(files[i]));
-            }
-            Promise.all(promises).then((urls) => {
-                setFormData({...formData, imageUrls:formData.imageUrls.concat(urls) });
-                setImageUploadError(false);
+            try {
+                const promises = Array.from(files).map(storeImage);
+                const urls = await Promise.all(promises);
+
+                setFormData((prev) => ({
+                    ...prev,
+                    mediaUrls: [...prev.mediaUrls, ...urls],
+                }));
                 setUploading(false);
-
-            }).catch((error) => {
+            } catch (error) {
                 setImageUploadError('Image upload failed (2 mb max per image)');
                 setUploading(false);
-            });
-        } else{
+            }
+        } else {
             setImageUploadError('You can only upload a maximum of 6 images');
             setUploading(false);
-            
         }
     };
 
-    //FIREBASE VERSION CODE
-
-    // const storeImage = async (file) => {
-    //     return new Promise((resolve, reject) => {
-    //         const storage = getStorage();
-    //         const fileName = new Date().getTime() + file.name;
-    //         const storageRef = ref(storage, fileName);
-    //         const uploadTask = uploadBytesResumable(storageRef, file);
-    //         uploadTask.on(
-    //             "state_changed",
-    //             (snapshot) => {
-    //                 const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-    //                 console.log("Upload is " + progress + "% done");
-    //             },
-    //             (error)=> {
-    //                 reject(error);
-    //             },
-    //             () => {
-    //                 getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-    //                     resolve(downloadURL);
-    //                 });
-    //             }
-    //         )
-    //     });
-    // };
-
-    // CLOUDINARY VERSION CODE
     const storeImage = async (file) => {
-        return new Promise((resolve, reject) => {
-            const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
-            const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+        const data = new FormData();
+        data.append('file', file);
+        data.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
+        data.append('folder', 'sde-project/media'); 
 
-            const xhr = new XMLHttpRequest();
-            xhr.open('POST', `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`);
-
-            const cloudinaryFormData = new FormData();
-            cloudinaryFormData.append('file', file);
-            cloudinaryFormData.append('upload_preset', uploadPreset);
-            cloudinaryFormData.append('folder', 'real-estate/listings'); // Saves in a separate folder
-
-            // Track upload progress in the console
-            xhr.upload.onprogress = (e) => {
-                if (e.lengthComputable) {
-                    const progress = (e.loaded / e.total) * 100;
-                    console.log(`Upload is ${Math.round(progress)}% done`);
-                }
-            };
-
-            // Handle successful upload
-            xhr.onload = () => {
-                if (xhr.status === 200) {
-                    const data = JSON.parse(xhr.responseText);
-                    resolve(data.secure_url); // Returns the URL to your Promise.all array
-                } else {
-                    reject(new Error("Image upload failed"));
-                }
-            };
-
-            // Handle network errors
-            xhr.onerror = () => {
-                reject(new Error("Network error"));
-            };
-
-            // Start the upload
-            xhr.send(cloudinaryFormData);
+        const res = await fetch(`https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`, {
+            method: 'POST', 
+            body: data
         });
+
+        const json = await res.json();
+        if (!json.secure_url) throw new Error("Image upload failed");
+        return json.secure_url; 
     };
 
     const handleRemoveImage = (index) => {
-        setFormData({...formData, imageUrls: formData.imageUrls.filter((_, i) => i !== index),
-
-        });
-    }
+        setFormData((prev) => ({
+            ...prev,
+            mediaUrls: prev.mediaUrls.filter((_, i) => i !== index),
+        }));
+    };
 
     const handleChange = (e) => {
-        if(e.target.id === 'sale' || e.target.id === 'rent'){
-            setFormData({...formData, type: e.target.id});
-        }
-        if(e.target.id === 'parking' || e.target.id === 'furnished' || e.target.id === 'offer'){
-            setFormData({...formData, [e.target.id]: e.target.checked});
+        if (e.target.id === 'shared' || e.target.id === 'individual') {
+            setFormData({
+                ...formData,
+                category: e.target.id,
+            });
         }
 
-        if(e.target.type === 'number' || e.target.type === 'text' || e.target.type === 'textarea'){
-            setFormData({...formData, [e.target.id]: e.target.value});
+        if (e.target.id === 'statusFlagTwo' || e.target.id === 'statusFlagOne' || e.target.id === 'statusFlagThree') {
+            setFormData({
+                ...formData,
+                [e.target.id]: e.target.checked,
+            });
+        }
+
+        if (e.target.type === 'number' || e.target.type === 'text' || e.target.type === 'textarea') {
+            setFormData({
+                ...formData,
+                [e.target.id]: e.target.type === 'number' ? Number(e.target.value) : e.target.value,
+            });
         }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
         try {
-            if(formData.imageUrls.length === 0) return setError('Please upload at least one image');
-            if(+formData.regularPrice < +formData.discountedPrice) return setError('Discounted price must be less than regular price');
+            if (formData.mediaUrls.length === 0) return setError('Please upload at least one image/proof.');
+            
+            if (+formData.primaryMetric < +formData.quaternaryMetric) {
+                return setError('Escalation priority cannot exceed base severity score.');
+            }
 
             setLoading(true);
             setError(false);
+
             const res = await fetch(`/api/listing/update/${params.listingId}`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({...formData, userRef: currentUser._id})
+                body: JSON.stringify({ ...formData, userRef: currentUser._id }),
             });
+
             const data = await res.json();
             setLoading(false);
-            if(data.success === false){
+
+            if (data.success === false) {
                 setError(data.message);
+                return;
             }
+
             navigate(`/listing/${data._id}`);
         } catch (error) {
             setError(error.message);
             setLoading(false);
         }
-    }
+    };
 
     return (
         <main className='p-3 max-w-4xl mx-auto'>
-            <h1 className='text-3xl font-semibold text-center my-7'>Update Listing</h1>
+            <h1 className='text-3xl font-semibold text-center my-7'>Update Issue Report</h1>
             <form onSubmit={handleSubmit} className='flex flex-col sm:flex-row gap-4'>
                 <div className="flex flex-col gap-4 flex-1">
-                    <input type="text" placeholder='Name' id='name' className='border p-3 rounded-lg' maxLength='62' minLength='10' required 
+                    <input type="text" placeholder='Issue Title (e.g., Leaking Tap)' id='title' className='border p-3 rounded-lg' maxLength='62' minLength='5' required 
                     onChange={handleChange} 
-                    value={formData.name} />
+                    value={formData.title} />
 
-                    <input type="text" placeholder='Description' id='description' className='border p-3 rounded-lg' maxLength='500' minLength='10' required 
+                    <textarea placeholder='Describe the issue in detail...' id='description' className='border p-3 rounded-lg' maxLength='500' minLength='10' required 
                     onChange={handleChange} 
                     value={formData.description} />
 
-                    <input type="text" placeholder='Address' id='address' className='border p-3 rounded-lg' maxLength='100' minLength='10' required 
+                    <input type="text" placeholder='Hostel Name & Room (e.g., Rajputana, Rm 42)' id='locationContext' className='border p-3 rounded-lg' maxLength='100' minLength='5' required 
                     onChange={handleChange} 
-                    value={formData.address} />
+                    value={formData.locationContext} />
 
                     <div className="flex gap-6 flex-wrap">
                         <div className="flex gap-2">
-                            <input type="checkbox" id='sale' className='w-5'
+                            <input type="checkbox" id='shared' className='w-5'
                             onChange={handleChange}
-                            checked={formData.type === 'sale'}
+                            checked={formData.category === 'shared'}
                             />
-                            <span>Sell</span>
+                            <span>Common Area Issue</span>
                         </div>
 
                         <div className="flex gap-2">
-                            <input type="checkbox" id='rent' className='w-5'
+                            <input type="checkbox" id='individual' className='w-5'
                             onChange={handleChange}
-                            checked={formData.type === 'rent'}
+                            checked={formData.category === 'individual'}
                             />
-                            <span>Rent</span>
+                            <span>Private Room Issue</span>
                         </div>
                         
                         <div className="flex gap-2">
-                            <input type="checkbox" id='parking' className='w-5'
+                            <input type="checkbox" id='statusFlagTwo' className='w-5'
                             onChange={handleChange}
-                            checked={formData.parking}
+                            checked={formData.statusFlagTwo}
                             />
-                            <span>Parking spot</span>
+                            <span>Safety Hazard</span>
                         </div>
 
                         <div className="flex gap-2">
-                            <input type="checkbox" id='furnished' className='w-5'
+                            <input type="checkbox" id='statusFlagOne' className='w-5'
                             onChange={handleChange}
-                            checked={formData.furnished}
+                            checked={formData.statusFlagOne}
                             />
-                            <span>Furnished</span>
+                            <span>Urgent / Emergency</span>
                         </div>
 
                         <div className="flex gap-2">
-                            <input type="checkbox" id='offer' className='w-5'
+                            <input type="checkbox" id='statusFlagThree' className='w-5'
                             onChange={handleChange}
-                            checked={formData.offer}
+                            checked={formData.statusFlagThree}
                             />
-                            <span>Offer</span>
+                            <span>Escalate to Warden</span>
                         </div>
                     </div>
                     <div className="flex flex-wrap gap-6">
                         <div className="flex items-center gap-2">
                             <input type="number"  
-                            id='bedrooms' min='1' max='10' required className='border border-gray-300 p-3 rounded-lg'
+                            id='tertiaryMetric' min='1' max='30' required className='border border-gray-300 p-3 rounded-lg'
                             onChange={handleChange}
-                            value={formData.bedrooms}
+                            value={formData.tertiaryMetric}
                             />
-                            <p>Beds</p>   
+                            <p>Days Noticed</p>   
                         </div>
 
                         <div className="flex items-center gap-2">
                             <input type="number"  
-                            id='bathrooms' min='1' max='10' required className='border border-gray-300 p-3 rounded-lg'
+                            id='secondaryMetric' min='1' max='500' required className='border border-gray-300 p-3 rounded-lg'
                             onChange={handleChange}
-                            value={formData.bathrooms}
+                            value={formData.secondaryMetric}
                             />
-                            <p>Baths</p>   
+                            <p>Students Affected</p>   
                         </div>
 
                         <div className="flex items-center gap-2">
                             <input type="number"  
-                            id='regularPrice' min='50' max='1000000' required className='border border-gray-300 p-3 rounded-lg'
+                            id='primaryMetric' min='1' max='10' required className='border border-gray-300 p-3 rounded-lg'
                             onChange={handleChange}
-                            value={formData.regularPrice}
+                            value={formData.primaryMetric}
                             />
                             <div className="flex flex-col items-center">
-                                <p>Regular Price</p> 
-                                <span className='text-xs'> $ / Month</span>  
+                                <p>Severity Score</p> 
+                                <span className='text-xs'>(1-10 scale)</span>  
                             </div>
                         </div>
-                        {formData.offer && (
+                        
+                        {formData.statusFlagThree && (
                             <div className="flex items-center gap-2">
                                 <input type="number"  
-                                id='discountedPrice' min='0' max='1000000' required className='border border-gray-300 p-3 rounded-lg'
+                                id='quaternaryMetric' min='1' max='5' required className='border border-gray-300 p-3 rounded-lg'
                                 onChange={handleChange}
-                                value={formData.discountedPrice}
+                                value={formData.quaternaryMetric}
                                 />
                                 <div className="flex flex-col items-center">
-                                    <p>Discounted Price</p> 
-                                    <span className='text-xs'> $ / Month</span>  
+                                    <p>Escalation Priority</p> 
+                                    <span className='text-xs'>(1-5 scale)</span>  
                                 </div>
                             </div> 
                         )}
@@ -288,27 +259,26 @@ export default function UpdateListing() {
                         </div>
                 </div>
                 <div className="flex flex-col flex-1 gap-4">
-                    <p className='font-semibold'>Images:
-                    <span className='font-normal text-gray-600 ml-2'>The first image will be the cover (max 6)</span>
+                    <p className='font-semibold'>Proof of Damage:
+                    <span className='font-normal text-gray-600 ml-2'>First image will be the cover photo (max 6)</span>
                     </p>
                     <div className="flex gap-4">
-                        <input onChange={(e) => setFiles(e.target.files)} className='p-3 border border-gray-300 rounded w-full' type='file' id='images' accept='image/*' multiple />
-                        <button type="button" onClick={handleImageSubmit} className='p-3 text-green-700 border-green-700 rounded uppercase hover:shadow-lg disabled:opacity-80'>{uploading ? 'Uploading...' : 'Upload'}</button>
+                        <input onChange={(e) => setFiles(e.target.files)} className='p-3 border border-gray-300 rounded w-full' type='file' id='media' accept='image/*' multiple />
+                        <button type="button" onClick={handleImageSubmit} className='p-3 text-green-700 border-green-700 rounded uppercase hover:shadow-lg disabled:opacity-80'>{uploading ? 'Uploading...' : 'Attach Photos'}</button>
                     </div>
                 <p className='text-red-700 text-sm'>{imageUploadError && imageUploadError}</p>
                 {
-                    formData.imageUrls.length > 0 && formData.imageUrls.map((url, index) => (
+                    formData.mediaUrls.length > 0 && formData.mediaUrls.map((url, index) => (
                         <div key={url} className="flex justify-between p-3 border items-center">
-                            <img src={url} alt="listing image" className='w-20 h-20 object-contained rounded-lg' />
+                            <img src={url} alt="proof of issue" className='w-20 h-20 object-contained rounded-lg' />
                             <button onClick={(e) => handleRemoveImage(index)} type="button" className='p-3 text-red-700 rounded-lg uppercase hover:opacity-75' >Delete</button>
                         </div>
                     ))
                 }
-                <button disabled={loading || uploading} className='p-3 bg-slate-700 text-white rounded-lg uppercase hover:opactiy-95 disabled:opacity-80'>{loading ? 'Updating...' : 'Update Listing'}</button>
+                <button disabled={loading || uploading} className='p-3 bg-slate-700 text-white rounded-lg uppercase hover:opacity-95 disabled:opacity-80'>{loading ? 'Updating...' : 'Update Issue Report'}</button>
                 {error && <p className='text-red-700 text-sm'>{error}</p>}
                 </div>
             </form>
         </main>
     )
 }
-

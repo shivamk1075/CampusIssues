@@ -26,161 +26,34 @@ export default function Profile() {
     }
   }, [file]);
 
-  // FIREBASE OLD CODE ::
 
-  // const handleFileUpload = async (file) => {
-  //   const storage = getStorage(app);
-  //   const fileName = new Date().getTime() + file.name;
-  //   const storageRef = ref(storage, fileName);
-  //   const uploadTask = uploadBytesResumable(storageRef, file);
-
-  //   uploadTask.on(
-  //     "state_changed",
-  //     (snapshot) => {
-  //       const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-  //       setFilePerc(Math.round(progress));
-  //     },
-  //     (error) => {
-  //       setFileUploadError(true);
-  //     },
-  //     ()=>{
-  //       getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-  //         setFormData(({ ...formData, avatar: downloadURL }));
-  //       });
-  //     }
-  //   );
-  // };
-
-  // CLOUDINARY NEW CODE ::
-  // const handleFileUpload = async (file) => {
-  //   try {
-  //     setFileUploadError(false);
-  //     setFilePerc(0);
-
-  //     const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
-  //     const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
-
-  //     const cloudinaryFormData = new FormData();
-  //     cloudinaryFormData.append('file', file);
-  //     cloudinaryFormData.append('upload_preset', uploadPreset);
-  //     cloudinaryFormData.append('folder', 'real-estate/avatars');
-
-  //     const response = await fetch(
-  //       `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-  //       {
-  //         method: 'POST',
-  //         body: cloudinaryFormData,
-  //       }
-  //     );
-
-  //     const data = await response.json();
-
-  //     if (!response.ok) {
-  //       throw new Error(data.error?.message || 'Image upload failed');
-  //     }
-
-  //     setFilePerc(100);
-
-  //     setFormData((previousData) => ({
-  //       ...previousData,
-  //       avatar: data.secure_url,
-  //     }));
-  //   } catch (error) {
-  //     console.error('Cloudinary upload failed:', error);
-  //     setFileUploadError(true);
-  //   }
-  // };
-
-
-
-  //CLOUDINARY NEW CODE WITH PROGRESS BAR ::
-  
-  // Mimics Firebase's uploadBytesResumable
-    const uploadToCloudinary = (file) => {
-    const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
-    const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
-
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`);
-
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', uploadPreset);
-    formData.append('folder', 'real-estate/avatars'); // Optional folder organization
-
-    const uploadTask = {
-      snapshot: {
-        bytesTransferred: 0,
-        totalBytes: file.size,
-        ref: { downloadURL: null }, // Mocking the Firebase ref
-      },
-      on: (eventName, onProgress, onError, onComplete) => {
-        // Handle Progress
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) {
-            uploadTask.snapshot.bytesTransferred = e.loaded;
-            uploadTask.snapshot.totalBytes = e.total;
-            onProgress(uploadTask.snapshot);
-          }
-        };
-
-        // Handle Success
-        xhr.onload = () => {
-          if (xhr.status === 200) {
-            const data = JSON.parse(xhr.responseText);
-            uploadTask.snapshot.ref.downloadURL = data.secure_url;
-            onComplete();
-          } else {
-            onError(new Error("Upload failed"));
-          }
-        };
-
-        // Handle Error
-        xhr.onerror = () => onError(new Error("Network error"));
-        
-        // Start upload
-        xhr.send(formData); 
-      },
-    };
-
-    return uploadTask;
-  };
-
-  // Mimics Firebase's getDownloadURL
-  const getCloudinaryDownloadURL = (ref) => {
-    return Promise.resolve(ref.downloadURL);
-  };
-
-  //SIMILAR TO FIREBASE FUNCTIONS
+  //Simpler Cloudinary Image Upload
   const handleFileUpload = async (file) => {
-    // 1. Call our Cloudinary wrapper instead of Firebase's ref/uploadBytesResumable
-    const uploadTask = uploadToCloudinary(file);
+    try {
+      setFilePerc("Uploading...");
+      setFileUploadError(false);
 
-    // 2. This structure is now identical to Firebase!
-    uploadTask.on(
-      "state_changed",
-      (snapshot) => {
-        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        
-        // This will show the progress in your browser console!
-        console.log(`Upload is ${Math.round(progress)}% done`); 
-        
-        setFilePerc(Math.round(progress));
-      },
-      (error) => {
-        console.error("Upload error:", error);
-        setFileUploadError(true);
-      },
-      () => {
-        // 3. Call our mocked getDownloadURL
-        getCloudinaryDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-          
-          console.log("File available at:", downloadURL); // Shows the final URL in console
-          
-          setFormData((prevData) => ({ ...prevData, avatar: downloadURL }));
-        });
-      }
-    );
+      const data = new FormData();
+      data.append('file', file);
+      data.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
+      data.append('folder', 'real-estate/avatars');
+
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`, {
+        method: 'POST', body: data
+      });
+      
+      const json = await res.json();
+      
+      // If Cloudinary didn't give us a URL, immediately jump to the catch block
+      if (!json.secure_url) throw new Error(); 
+
+      setFormData((prev) => ({ ...prev, avatar: json.secure_url }));
+      setFilePerc("Done!");
+      
+    } catch (error) {
+      setFileUploadError(true);
+      setFilePerc(null);
+    }
   };
 
   const handleChange = (e) => {
@@ -320,25 +193,34 @@ export default function Profile() {
 
       <div className="flex flex-col gap-4">
         <h1 className="text-center mt-7 text-2xl font-semibold">Your Listings</h1>
-      {userListings.map((listing) => (
-        <div key={listing._id} className='border rounded-lg p-3 flex justify-between items-center gap-4'>
-          <Link to={`/listing/${listing._id}`} className="">
-            <img src={listing.imageUrls[0]} alt='Listing title' className="w-16 h-16 object-contain "/>
-          </Link>
-          <Link className="flex-1 text-slate-700 font-semibold hover:underline truncate" to ={`/listing/${listing._id}`}>
-            <p>{listing.name}</p>
-          </Link> 
+          {userListings.map((listing) => (
+            <div key={listing._id} className='border rounded-lg p-3 flex justify-between items-center gap-4'>
+              <Link to={`/listing/${listing._id}`}>
+                <img
+                  src={
+                    listing.mediaUrls[0] || 
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSw2We7XUMHHnWDYCLn06OOr57Rf5Kab51MjxFQS50hSg&s=10'
+                  }
+                  alt='Issue cover'
+                  className="w-16 h-16 object-contain"
+                />
+              </Link>
 
-          <div className="flex flex-col item-center">
-          <button onClick={() => handleListingDelete(listing._id)} className='text-red-700 uppercase' >Delete</button>
-          
-          <Link to={`/updatelisting/${listing._id}`} className="">
-          <button className='text-green-700 uppercase' >Edit</button>
-          </Link>
-          </div>
-        </div>
-      ))
-      }
+              <Link className="flex-1 text-slate-700 font-semibold hover:underline truncate" to={`/listing/${listing._id}`}>
+                <p>{listing.title}</p>
+              </Link>
+
+              <div className="flex flex-col items-center">
+                <button onClick={() => handleListingDelete(listing._id)} className='text-red-700 uppercase'>
+                  Delete
+                </button>
+
+                <Link to={`/updatelisting/${listing._id}`}>
+                  <button className='text-green-700 uppercase'>Edit</button>
+                </Link>
+              </div>
+            </div>
+          ))}
       </div>
       }
     </div>

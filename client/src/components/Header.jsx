@@ -30,8 +30,8 @@ export default function Header() {
       <div className='flex justify-between items-center max-w-6xl mx-auto p-3'>
         <Link to='/'>
           <h1 className='font-bold text-sm sm:text-xl flex flex-wrap'>
-            <span className='text-slate-500'>Shivam</span>
-            <span className='text-slate-500'>Estate</span>
+            <span className='text-slate-500'>IIT BHU Issues</span>
+            {/* <span className='text-slate-500'>Issues</span> */}
           </h1>
         </Link>
         <form onSubmit={handleSubmit} className='bg-slate-100 pg-3 rounded-lg flex items-center'>

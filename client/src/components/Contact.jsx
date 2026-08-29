@@ -2,33 +2,39 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 export default function Contact({ listing }) {
-  const [landlord, setLandlord] = useState(null);
+  const [reporter, setReporter] = useState(null);
   const [message, setMessage] = useState('');
+
   const onChange = (e) => {
     setMessage(e.target.value);
   };
 
   useEffect(() => {
-    const fetchLandlord = async () => {
+    const fetchReporter = async () => {
       try {
         const res = await fetch(`/api/user/${listing.userRef}`);
         const data = await res.json();
-        setLandlord(data);
+        setReporter(data);
       } catch (error) {
         console.log(error);
       }
     };
-    fetchLandlord();
+
+    if (listing?.userRef) {
+      fetchReporter();
+    }
   }, [listing.userRef]);
+
   return (
     <>
-      {landlord && (
+      {reporter && (
         <div className='flex flex-col gap-2'>
           <p>
-            Contact <span className='font-semibold'>{landlord.username}</span>{' '}
-            for{' '}
-            <span className='font-semibold'>{listing.name.toLowerCase()}</span>
+            Contact <span className='font-semibold'>{reporter.username}</span>{' '}
+            regarding issue:{' '}
+            <span className='font-semibold'>{listing.title.toLowerCase()}</span>
           </p>
+
           <textarea
             name='message'
             id='message'
@@ -40,10 +46,10 @@ export default function Contact({ listing }) {
           ></textarea>
 
           <Link
-          to={`mailto:${landlord.email}?subject=Regarding ${listing.name}&body=${message}`}
-          className='bg-slate-700 text-white text-center p-3 uppercase rounded-lg hover:opacity-95'
+            to={`mailto:${reporter.email}?subject=Regarding Issue: ${listing.title}&body=${message}`}
+            className='bg-slate-700 text-white text-center p-3 uppercase rounded-lg hover:opacity-95'
           >
-            Send Message          
+            Send Message
           </Link>
         </div>
       )}
