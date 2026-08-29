@@ -1,14 +1,18 @@
-import React from 'react'
+import React from 'react';
 
 export default function About() {
   return (
     <div className='py-20 px-4 max-w-6xl mx-auto'>
-      <h1 className='text-3xl font-bold mb-4 text-slate-800'>About Sahand Estate</h1>
-      <p className='mb-4 text-slate-700'>Sahand Estate is a leading real estate agency that specializes in helping clients buy, sell, and rent properties in the most desirable neighborhoods. Our team of experienced agents is dedicated to providing exceptional service and making the buying and selling process as smooth as possible.</p>
+      <h1 className='text-3xl font-bold mb-4 text-slate-800'>About IIT BHU Issues Tracker</h1>
       <p className='mb-4 text-slate-700'>
-      Our mission is to help our clients achieve their real estate goals by providing expert advice, personalized service, and a deep understanding of the local market. Whether you are looking to buy, sell, or rent a property, we are here to help you every step of the way.
+        The IIT BHU Issues Tracker is a centralized campus platform designed to streamline hostel maintenance, facility tracking, and infrastructure management. It provides students and administration with a transparent, structured system to log, monitor, and resolve day-to-day residential issues efficiently.
       </p>
-      <p className='mb-4 text-slate-700'>Our team of agents has a wealth of experience and knowledge in the real estate industry, and we are committed to providing the highest level of service to our clients. We believe that buying or selling a property should be an exciting and rewarding experience, and we are dedicated to making that a reality for each and every one of our clients.</p>
+      <p className='mb-4 text-slate-700'>
+        From electrical faults and plumbing failures to urgent safety hazards in private rooms or common areas, the platform allows residents to submit detailed reports accompanied by proof of damage, location context, and impact metrics.
+      </p>
+      <p className='mb-4 text-slate-700'>
+        By categorizing problems using quantifiable severity scores, urgency flags, and direct escalation channels to wardens, the system ensures critical issues receive immediate prioritization to maintain safe and functional living spaces across campus.
+      </p>
     </div>
-  )
+  );
 }
